@@ -245,7 +245,7 @@ class Lrc {
 
   /// Checks if the string [input] is a valid LRC using Regex.
   static bool isValid(String input) => RegExp(
-          r'^([\r\n]*\[((ti)|(a[rlu])|(by)|([rv]e)|(length)|(offset)|(la)):.+\][\r\n]*)*([\r\n]*\[\d\d:\d\d\.\d\d\].*){2,}[\r\n]*$')
+          r'([\r\n]*\[((ti)|(a[rlu])|(by)|([rv]e)|(length)|(offset)|(la)):.+\][\r\n]*)*([\r\n]*\[\d\d:\d\d\.\d\d\].*){2,}[\r\n]')
       .hasMatch(input.trim());
 
   @override
