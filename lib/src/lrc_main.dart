@@ -84,24 +84,25 @@ class Lrc {
   /// Format the lrc to a readable string that can then be
   /// outputted to an LRC file.
   String format() {
-    var output = '';
+    var buffer = StringBuffer();
 
-    output += (artist != null) ? '[ar:$artist]\n' : '';
-    output += (album != null) ? '[al:$album]\n' : '';
-    output += (title != null) ? '[ti:$title]\n' : '';
-    output += (length != null) ? '[length:$length]\n' : '';
-    output += (creator != null) ? '[by:$creator]\n' : '';
-    output += (author != null) ? '[au:$author]\n' : '';
-    output += (offset != null) ? '[offset:${offset.toString()}]\n' : '';
-    output += (program != null) ? '[re:$program]\n' : '';
-    output += (version != null) ? '[ve:$version]\n' : '';
-    output += (language != null) ? '[la:$language]\n' : '';
+    if (artist != null) buffer.writeln('[ar:$artist]');
+    if (album != null) buffer.writeln('[al:$album]');
+    if (title != null) buffer.writeln('[ti:$title]');
+    if (length != null) buffer.writeln('[length:$length]');
+    if (creator != null) buffer.writeln('[by:$creator]');
+    if (author != null) buffer.writeln('[au:$author]');
+    if (offset != null) buffer.writeln('[offset:${offset.toString()}]');
+    if (program != null) buffer.writeln('[re:$program]');
+    if (version != null) buffer.writeln('[ve:$version]');
+    if (language != null) buffer.writeln('[la:$language]');
 
-    for (var lyric in lyrics) {
-      output += lyric.formattedLine + '\n';
+    final lrcLength = lyrics.length;
+    for (var i = 0; i < lrcLength; i++) {
+      buffer.writeln(lyrics[i].formattedLine);
     }
 
-    return output;
+    return buffer.toString();
   }
 
   /// Parses an LRC from a string. Throws a `FormatExeption`
