@@ -1,3 +1,5 @@
+part 'multi_timestamp_parser.dart';
+
 /// The parsed LRC class.
 ///
 /// You can instantiate this class directly
@@ -105,6 +107,28 @@ class Lrc {
     return buffer.toString();
   }
 
+  static List<String> _splitLines(String data) {
+    var lines = <String>[];
+    var end = data.length;
+    var sliceStart = 0;
+    var char = 0;
+    for (var i = 0; i < end; i++) {
+      var previousChar = char;
+      char = data.codeUnitAt(i);
+      if (char != 13) {
+        if (char != 10) continue;
+        if (previousChar == 13) {
+          sliceStart = i + 1;
+          continue;
+        }
+      }
+      lines.add(data.substring(sliceStart, i));
+      sliceStart = i + 1;
+    }
+    if (sliceStart < end) lines.add(data.substring(sliceStart, end));
+    return lines;
+  }
+
   /// Parses an LRC from a string. Throws a `FormatExeption`
   /// if the inputted string is not valid.
   static Lrc parse(String parsed) {
@@ -115,27 +139,7 @@ class Lrc {
     }
 
     // split string into lines, code from Linesplitter().convert(data)
-    var lines = ((data) {
-      var lines = <String>[];
-      var end = data.length;
-      var sliceStart = 0;
-      var char = 0;
-      for (var i = 0; i < end; i++) {
-        var previousChar = char;
-        char = data.codeUnitAt(i);
-        if (char != 13) {
-          if (char != 10) continue;
-          if (previousChar == 13) {
-            sliceStart = i + 1;
-            continue;
-          }
-        }
-        lines.add(data.substring(sliceStart, i));
-        sliceStart = i + 1;
-      }
-      if (sliceStart < end) lines.add(data.substring(sliceStart, end));
-      return lines;
-    })(parsed);
+    var lines = _splitLines(parsed);
 
     // temporary storer variables
     String? artist,
@@ -150,6 +154,7 @@ class Lrc {
         language;
     LrcTypes? type;
     var lyrics = <LrcLine>[];
+    var maxMultiTimestampCountInALine = 0;
 
     String? setIfMatchTag(String toMatch, String tag) =>
         (RegExp(r'^\[' + tag + r':.*\]$').hasMatch(toMatch))
@@ -157,22 +162,29 @@ class Lrc {
             : null;
 
     // loop thru each lines
-    for (var i in lines) {
-      artist = artist ?? setIfMatchTag(i, 'ar');
-      album = album ?? setIfMatchTag(i, 'al');
-      title = title ?? setIfMatchTag(i, 'ti');
-      author = author ?? setIfMatchTag(i, 'au');
-      length = length ?? setIfMatchTag(i, 'length');
-      creator = creator ?? setIfMatchTag(i, 'by');
-      offset = offset ?? setIfMatchTag(i, 'offset');
-      program = program ?? setIfMatchTag(i, 're');
-      version = version ?? setIfMatchTag(i, 've');
-      language = language ?? setIfMatchTag(i, 'la');
+    for (var l in lines) {
+      artist ??= setIfMatchTag(l, 'ar');
+      album ??= setIfMatchTag(l, 'al');
+      title ??= setIfMatchTag(l, 'ti');
+      author ??= setIfMatchTag(l, 'au');
+      length ??= setIfMatchTag(l, 'length');
+      creator ??= setIfMatchTag(l, 'by');
+      offset ??= setIfMatchTag(l, 'offset');
+      program ??= setIfMatchTag(l, 're');
+      version ??= setIfMatchTag(l, 've');
+      language ??= setIfMatchTag(l, 'la');
 
-      if (RegExp(r'^\[\d\d:\d\d\.\d\d\].*$').hasMatch(i)) {
-        var lyric = i.substring(10).trim();
+      if (_LRCMultiTimestampParser._durRegex.hasMatch(l)) {
         var lineType = LrcTypes.simple;
         Map<String, Object>? args;
+
+        final lrclineDetails = _LRCMultiTimestampParser.parseLine(l);
+        final lyric = lrclineDetails.lineText;
+        final timestamps = lrclineDetails.timestamps;
+
+        if (timestamps.length > maxMultiTimestampCountInALine) {
+          maxMultiTimestampCountInALine = timestamps.length;
+        }
 
         // checkers for different types of LRCs
         if (lyric.contains(RegExp(r'^\w:'))) {
@@ -211,21 +223,22 @@ class Lrc {
             );
           }
         }
-        final minutes = int.parse(i.substring(1, 3));
-        final seconds = int.parse(i.substring(4, 6));
-        final hundreds = int.parse(i.substring(7, 9));
 
-        lyrics.add(LrcLine(
-          timestamp: Duration(
-            minutes: minutes,
-            seconds: seconds,
-            milliseconds: hundreds * 10,
-          ),
-          lyrics: lyric,
-          type: lineType,
-          args: args,
-        ));
+        for (final linetimestamp in timestamps) {
+          lyrics.add(LrcLine(
+            timestamp: linetimestamp,
+            lyrics: lrclineDetails.lineText,
+            type: lineType,
+            args: args,
+          ));
+        }
       }
+    }
+
+    final hadMultiTimestamps = maxMultiTimestampCountInALine > 1;
+    if (hadMultiTimestamps) {
+      lyrics.sort((a, b) =>
+          a.timestamp.inMicroseconds.compareTo(b.timestamp.inMicroseconds));
     }
 
     return Lrc(
@@ -247,7 +260,7 @@ class Lrc {
   /// Checks if the string [input] is a valid LRC using Regex.
   static bool isValid(String input) => RegExp(
           r'([\r\n]*\[((ti)|(a[rlu])|(by)|([rv]e)|(length)|(offset)|(la)):.+\][\r\n]*)*([\r\n]*\[\d\d:\d\d\.\d\d\].*){2,}[\r\n]')
-      .hasMatch(input.trim());
+      .hasMatch(input);
 
   @override
   String toString() {
@@ -264,7 +277,7 @@ class Lrc {
     Length: '$length'
     Language: '$language'
     Offset: '$offset'
-    Lyrics: '$lyrics'
+    Lyrics: $lyrics
     ''';
   }
 }
