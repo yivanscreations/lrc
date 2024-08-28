@@ -129,6 +129,10 @@ class Lrc {
     return lines;
   }
 
+  static List<String> splitMultiLanguageLine(String lyric) {
+    return lyric.split(RegExp(r'(\s{2,}|\||;)'));
+  }
+
   /// Parses an LRC from a string. Throws a `FormatExeption`
   /// if the inputted string is not valid.
   static Lrc parse(String parsed) {
@@ -224,13 +228,17 @@ class Lrc {
           }
         }
 
-        for (final linetimestamp in timestamps) {
-          lyrics.add(LrcLine(
-            timestamp: linetimestamp,
-            lyrics: lrclineDetails.lineText,
-            type: lineType,
-            args: args,
-          ));
+        final lyricSplit = splitMultiLanguageLine(lyric);
+        for (var i = 0; i < lyricSplit.length; i++) {
+          final part = lyricSplit[i];
+          for (final linetimestamp in timestamps) {
+            lyrics.add(LrcLine(
+              timestamp: linetimestamp,
+              lyrics: part,
+              type: lineType,
+              args: args,
+            ));
+          }
         }
       }
     }
