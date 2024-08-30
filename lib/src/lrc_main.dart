@@ -130,7 +130,7 @@ class Lrc {
   }
 
   static List<String> splitMultiLanguageLine(String lyric) {
-    return lyric.split(RegExp(r'(\s{2,}|\||;)'));
+    return lyric.split(RegExp(r'(\s{2,}|\|)(?=\S)'));
   }
 
   /// Parses an LRC from a string. Throws a `FormatExeption`
@@ -166,7 +166,8 @@ class Lrc {
             : null;
 
     // loop thru each lines
-    for (var l in lines) {
+    for (var i = 0; i < lines.length; i++) {
+      var l = lines[i];
       artist ??= setIfMatchTag(l, 'ar');
       album ??= setIfMatchTag(l, 'al');
       title ??= setIfMatchTag(l, 'ti');
